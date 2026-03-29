@@ -94,6 +94,19 @@ class LangZH(output: PackOutput) : LanguageProvider(output, ExtendedAEPlusClient
                             .addStr("pattern")
                             .addStr("already")
                             .buildInto("[EAEP] 样板已存在")
+        UtilKeyBuilder.ofDataGen(UtilKeyBuilder.message)
+                            .addStr("pattern")
+                            .addStr("duplicate_output")
+                            .buildInto("[EAEP] 警告: 主产物 %s (%s) 存在 %s 个不同的样板")
+        UtilKeyBuilder.ofDataGen(UtilKeyBuilder.message)
+                            .addStr("pattern")
+                            .addStr("no_duplicates")
+                            .buildInto("[EAEP] 未发现主产物重复的样板")
+
+        UtilKeyBuilder.ofDataGen(UtilKeyBuilder.screenTooltip)
+            .addStr("check_duplicates")
+            .branch("description", "检查所有样板供应器中主产物相同但样板不同的情况")
+            .buildInto("检查重复")
 
         UtilKeyBuilder.BuilderDataGen.destroy("zh_cn")
     }

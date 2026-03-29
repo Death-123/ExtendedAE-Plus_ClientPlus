@@ -21,6 +21,7 @@ import com.fish.extendedae_plus_client.mixin.impl.helper.AutoEncodingStage;
 import com.fish.extendedae_plus_client.mixin.impl.helper.HelperEncodingTerminal;
 import com.fish.extendedae_plus_client.mixin.impl.helper.HelperPatternMoving;
 import com.fish.extendedae_plus_client.mixin.impl.helper.WTLibHelper;
+import com.fish.extendedae_plus_client.network.RequestProvidersC2SPacket;
 import com.fish.extendedae_plus_client.render.screen.ScreenProviderList;
 import com.fish.extendedae_plus_client.util.UtilKeyBuilder;
 import com.glodblock.github.extendedae.common.EAESingletons;
@@ -58,6 +59,8 @@ public abstract class MixinEncodingTerminal extends MEStorageMenu implements Bri
     private boolean eaep$flagPatternSelection;
     @Unique
     private AutoEncodingStage eaep$autoEncoding = AutoEncodingStage.None;
+    @Unique
+    private boolean eaep$providersCacheRequested = false;
 
     public MixinEncodingTerminal(MenuType<?> menuType, int id, Inventory ip, ITerminalHost host) {
         super(menuType, id, ip, host);
@@ -110,6 +113,7 @@ public abstract class MixinEncodingTerminal extends MEStorageMenu implements Bri
             ci.cancel();
             return;
         }
+
         this.eaep$flagPatternSelection = true;
         if (!this.encodedPatternSlot.hasItem()) return;
         if (ItemStack.isSameItemSameComponents(encodedPatternSlot.getItem(), pattern)) {
@@ -184,11 +188,11 @@ public abstract class MixinEncodingTerminal extends MEStorageMenu implements Bri
                 if(!WTLibHelper.openTerminalCyc(WTLibHelper.PATTERN_ACCESS))
                     WTLibHelper.openTerminalCyc(WTLibHelper.EX_PATTERN_ACCESS);
             }
-        }else if(EAEPCConfig.autoUploadMode.get() == AutoUploadMode.EAEP_BY_NAME && ModList.get().isLoaded("extendedae_plus")){
-            HelperPatternMoving.eaepUploadPatternByName(group,patternDetails);
+        } else if (EAEPCConfig.autoUploadMode.get() == AutoUploadMode.SERVER_BY_GROUP) {
+            HelperPatternMoving.uploadPatternToGroup(group, patternDetails);
+        } else if (EAEPCConfig.autoUploadMode.get() == AutoUploadMode.EAEP_BY_NAME && ModList.get().isLoaded("extendedae_plus")) {
+            HelperPatternMoving.eaepUploadPatternByName(group, patternDetails);
         }
-
-
     }
 
     @Override
@@ -199,6 +203,13 @@ public abstract class MixinEncodingTerminal extends MEStorageMenu implements Bri
     @Unique
     @Override
     public void eaep$tick() {
+        if (!eaep$providersCacheRequested
+                && CacheProvider.isEmpty()
+                && EAEPCConfig.autoUploadMode.get() == AutoUploadMode.SERVER_BY_GROUP) {
+            eaep$providersCacheRequested = true;
+            PacketDistributor.sendToServer(RequestProvidersC2SPacket.INSTANCE);
+        }
+
         if (this.eaep$autoEncoding != AutoEncodingStage.None) {
             this.eaep$autoEncoding = AutoEncodingStage.values()[(eaep$autoEncoding.ordinal() + 1) % AutoEncodingStage.values().length];
         }

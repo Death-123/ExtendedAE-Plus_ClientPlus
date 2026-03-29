@@ -1,7 +1,10 @@
 package com.fish.extendedae_plus_client.mixin.core.ae.screen;
 
+import appeng.api.crafting.IPatternDetails;
 import appeng.api.crafting.PatternDetailsHelper;
 import appeng.api.implementations.blockentities.PatternContainerGroup;
+import appeng.api.stacks.AEItemKey;
+import appeng.api.stacks.AEKey;
 import appeng.client.gui.AEBaseScreen;
 import appeng.client.gui.me.patternaccess.PatternAccessTermScreen;
 import appeng.client.gui.me.patternaccess.PatternContainerRecord;
@@ -10,6 +13,9 @@ import appeng.client.gui.widgets.AETextField;
 import appeng.menu.implementations.PatternAccessTermMenu;
 import com.fish.extendedae_plus_client.impl.cache.CacheProvider;
 import com.fish.extendedae_plus_client.mixin.impl.helper.HelperPatternMoving;
+import com.fish.extendedae_plus_client.render.widgets.button.EAEPActionButton;
+import com.fish.extendedae_plus_client.render.widgets.button.EAEPActionItems;
+import com.fish.extendedae_plus_client.util.UtilKeyBuilder;
 import it.unimi.dsi.fastutil.ints.Int2ObjectMap;
 import net.minecraft.network.chat.Component;
 import net.minecraft.world.entity.player.Inventory;
@@ -22,7 +28,7 @@ import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
-import java.util.HashMap;
+import java.util.*;
 
 @Mixin(PatternAccessTermScreen.class)
 public class MixinAccessTerminal<TMenu extends PatternAccessTermMenu> extends AEBaseScreen<TMenu> {
@@ -45,6 +51,9 @@ public class MixinAccessTerminal<TMenu extends PatternAccessTermMenu> extends AE
         CacheProvider.clearProvider();
         CacheProvider.clearPatternAlready();
         this.eaep$helperMoving = new HelperPatternMoving(this);
+        this.addToLeftToolbar(
+                new EAEPActionButton(EAEPActionItems.CHECK_DUPLICATES, action -> eaep$checkDuplicateOutputs())
+        );
     }
 
     @SuppressWarnings("MixinAnnotationTarget")
@@ -102,5 +111,54 @@ public class MixinAccessTerminal<TMenu extends PatternAccessTermMenu> extends AE
     @Inject(method = "containerTick", at = @At("TAIL"))
     private void onUpdating(CallbackInfo ci) {
         this.eaep$helperMoving.movePattern();
+    }
+
+    @Unique
+    private void eaep$checkDuplicateOutputs() {
+        var player = this.getPlayer();
+        if (player == null) return;
+
+        Map<AEKey, Set<IPatternDetails>> outputPatterns = new LinkedHashMap<>();
+
+        for (var record : byId.values()) {
+            var inv = record.getInventory();
+            for (int i = 0; i < inv.size(); i++) {
+                var stack = inv.getStackInSlot(i);
+                if (stack.isEmpty()) continue;
+                var details = PatternDetailsHelper.decodePattern(stack, player.level());
+                if (details == null) continue;
+                var output = details.getPrimaryOutput().what();
+                outputPatterns.computeIfAbsent(output, k -> new HashSet<>()).add(details);
+            }
+        }
+
+        int found = 0;
+        for (var entry : outputPatterns.entrySet()) {
+            if (entry.getValue().size() > 1) {
+                found++;
+                var aeKey = entry.getKey();
+                Component outputName = aeKey instanceof AEItemKey itemKey
+                        ? itemKey.toStack().getHoverName()
+                        : Component.literal(aeKey.getId().toString());
+                player.displayClientMessage(
+                        UtilKeyBuilder.of(UtilKeyBuilder.message)
+                                .addStr("pattern")
+                                .addStr("duplicate_output")
+                                .args(outputName, aeKey.getId().toString(), entry.getValue().size())
+                                .build(),
+                        false
+                );
+            }
+        }
+
+        if (found == 0) {
+            player.displayClientMessage(
+                    UtilKeyBuilder.of(UtilKeyBuilder.message)
+                            .addStr("pattern")
+                            .addStr("no_duplicates")
+                            .build(),
+                    false
+            );
+        }
     }
 }

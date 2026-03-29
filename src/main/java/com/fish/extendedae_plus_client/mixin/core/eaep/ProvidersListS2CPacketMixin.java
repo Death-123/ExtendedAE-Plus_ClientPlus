@@ -25,7 +25,7 @@ public class ProvidersListS2CPacketMixin {
 
     @Inject(method = "handleClient",at = @At("HEAD"), cancellable = true)
     private static void handle(ProvidersListS2CPacket msg, CallbackInfo ci){
-        if(HelperPatternMoving.uploadedGroup!=null){
+        if(HelperPatternMoving.eaepPendingGroup!=null){
             HelperPatternMoving.eaepPacketHandler(msg);
             ci.cancel();
         }

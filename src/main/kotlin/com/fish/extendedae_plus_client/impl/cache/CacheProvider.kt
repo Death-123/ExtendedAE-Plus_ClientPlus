@@ -23,6 +23,23 @@ object CacheProvider {
     private val markedCount: MutableMap<PatternContainerGroup, Int> = HashMap()
 
     @JvmStatic
+    private val networkSlots: MutableMap<PatternContainerGroup, Int> = LinkedHashMap()
+
+    @JvmStatic
+    fun beginSync() {
+        networkSlots.clear()
+    }
+
+    @JvmStatic
+    fun addNetworkProvider(group: PatternContainerGroup, availableSlots: Int) {
+        networkSlots[group] = availableSlots
+    }
+
+    @JvmStatic
+    fun endSync() {
+    }
+
+    @JvmStatic
     fun incMark(group: PatternContainerGroup) {
         markedCount[group] = (markedCount[group] ?: 0) + 1
     }
@@ -108,25 +125,31 @@ object CacheProvider {
 
     @JvmStatic
     fun getAvailableSlots(group: PatternContainerGroup): Int {
-        var all = 0
-        val map = providerSlots.getOrPut(group) { HashMap() }
-        val it = map.entries.iterator()
-        while (it.hasNext()) {
-            val (record, set) = it.next()
-            val used = set.cardinality()
-            val canUsed = record.inventory.size() - used
-            if (canUsed > 0) {
-                all += canUsed
-            } else {
-                it.remove()
+        val reserved = markedCount[group] ?: 0
+
+        val map = providerSlots[group]
+        if (map != null && map.isNotEmpty()) {
+            var all = 0
+            val it = map.entries.iterator()
+            while (it.hasNext()) {
+                val (record, set) = it.next()
+                val used = set.cardinality()
+                val canUsed = record.inventory.size() - used
+                if (canUsed > 0) {
+                    all += canUsed
+                } else {
+                    it.remove()
+                }
             }
+            return all - reserved
         }
 
-        // ===== 新增：减去 markPattern 占位 =====
-        val reserved = markedCount[group] ?: 0
-        val left = all - reserved
-        return left
-        // ====================================
+        val netSlots = networkSlots[group]
+        if (netSlots != null) {
+            return netSlots - reserved
+        }
+
+        return 0
     }
 
     @JvmStatic
@@ -144,17 +167,20 @@ object CacheProvider {
 
     @JvmStatic
     fun getGroups(): MutableSet<PatternContainerGroup> {
-        return providerList.keys
+        val groups = LinkedHashSet(providerList.keys)
+        groups.addAll(networkSlots.keys)
+        return groups
     }
 
     @JvmStatic
     fun isEmpty(): Boolean {
-        return providerList.isEmpty()
+        return providerList.isEmpty() && networkSlots.isEmpty()
     }
 
     @JvmStatic
     fun clearProvider() {
         providerList.clear()
         providerSlots.clear()
+        networkSlots.clear()
     }
 }

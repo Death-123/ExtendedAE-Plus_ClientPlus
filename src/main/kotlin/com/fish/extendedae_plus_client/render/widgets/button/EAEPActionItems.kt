@@ -15,7 +15,8 @@ enum class EAEPActionItems(
     BACKING_OUT(fromAEIcon(Icon.INVALID), Component.empty(), Component.empty(), ""),
 
     ALIAS_ADD(EAEPIcon.SAVE_UP, "recipe_alias", "add"),
-    ALIAS_REMOVE(EAEPIcon.SAVE_DOWN, "recipe_alias", "remove");
+    ALIAS_REMOVE(EAEPIcon.SAVE_DOWN, "recipe_alias", "remove"),
+    CHECK_DUPLICATES(EAEPIcon.SAVE_CENTER, "check_duplicates", "description");
 
     constructor(icon: IButtonIcon, actionGroup: String) :
             this(icon, Component.empty(), Component.empty(), actionGroup)

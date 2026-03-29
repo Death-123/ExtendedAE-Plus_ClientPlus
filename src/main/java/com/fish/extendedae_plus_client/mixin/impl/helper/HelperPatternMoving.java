@@ -7,10 +7,12 @@ import appeng.client.gui.AEBaseScreen;
 import appeng.core.network.serverbound.InventoryActionPacket;
 import appeng.helpers.InventoryAction;
 import com.extendedae_plus.network.ProvidersListS2CPacket;
+import com.extendedae_plus.network.RequestProvidersListC2SPacket;
 import com.extendedae_plus.network.UploadEncodedPatternToProviderC2SPacket;
 import com.fish.extendedae_plus_client.config.EAEPCConfig;
 import com.fish.extendedae_plus_client.config.enums.AutoUploadMode;
 import com.fish.extendedae_plus_client.impl.cache.CacheProvider;
+import com.fish.extendedae_plus_client.network.UploadPatternByGroupPacket;
 import com.fish.extendedae_plus_client.util.ComponentLocaleConverter;
 import com.mojang.datafixers.util.Pair;
 import it.unimi.dsi.fastutil.ints.Int2ObjectOpenHashMap;
@@ -20,7 +22,6 @@ import net.minecraft.world.inventory.ClickType;
 import net.minecraft.world.item.ItemStack;
 import net.neoforged.fml.ModList;
 import net.neoforged.neoforge.network.PacketDistributor;
-import com.extendedae_plus.network.RequestProvidersListC2SPacket;
 
 import java.util.*;
 
@@ -30,39 +31,42 @@ public final class HelperPatternMoving {
     private final Map<Long, Integer> cacheUsedSlots;
     private final List<Pair<Integer, Pair<IPatternDetails, PatternContainerGroup>>> patterns;
     private final Set<IPatternDetails> cache = new HashSet<>();
-    private final Map<IPatternDetails, PatternContainerGroup> perSuccess=new HashMap<>();
+    private final Map<IPatternDetails, PatternContainerGroup> perSuccess = new HashMap<>();
     private int delay = EAEPCConfig.autoTransferDelay.getAsInt();
-    private boolean perCompleted=false;
-    public static IPatternDetails pattern=null;
-    public static PatternContainerGroup uploadedGroup=null;
-    public static HelperPatternMoving INSTANCE=null;
+    private boolean perCompleted = false;
+
+    // EAEP_BY_NAME flow state
+    public static IPatternDetails eaepPendingPattern = null;
+    public static PatternContainerGroup eaepPendingGroup = null;
+
+    public static HelperPatternMoving INSTANCE = null;
 
     public HelperPatternMoving(AEBaseScreen<?> host) {
         this.host = host;
         this.patterns = new ArrayList<>();
         this.cacheUsedSlots = new HashMap<>();
-        INSTANCE=this;
+        INSTANCE = this;
     }
 
     public void onClose() {
         CacheProvider.clearPattern();
         this.cacheUsedSlots.clear();
-        for(var i:perSuccess.entrySet()){
-            CacheProvider.markPattern(i.getKey(),i.getValue());
+        for (var i : perSuccess.entrySet()) {
+            CacheProvider.markPattern(i.getKey(), i.getValue());
         }
-        INSTANCE=null;
+        INSTANCE = null;
     }
 
     public boolean isEmpty() {
         return this.patterns.isEmpty();
     }
 
-    public void markSuccess(IPatternDetails patternDetails){//TODO 闭环控制
+    public void markSuccess(IPatternDetails patternDetails) {
         perSuccess.remove(patternDetails);
     }
 
     public void movePattern() {
-        if(perCompleted && perSuccess.isEmpty()){
+        if (perCompleted && perSuccess.isEmpty()) {
             WTLibHelper.goBackCyc();
         }
         if (perCompleted) return;
@@ -85,7 +89,7 @@ public final class HelperPatternMoving {
         if (perSuccess) {
             this.perSuccess.put(info.getSecond().getFirst(), info.getSecond().getSecond());
             this.patterns.removeFirst();
-        }else{
+        } else {
             this.patterns.removeFirst();
             this.patterns.addLast(info);
         }
@@ -97,7 +101,6 @@ public final class HelperPatternMoving {
 
     private void filterPattern() {
         if (Minecraft.getInstance().player == null) return;
-        this.onClose();
 
         var inv = Minecraft.getInstance().player.getInventory().items;
         for (int index = 0; index < inv.size(); index++) {
@@ -158,40 +161,61 @@ public final class HelperPatternMoving {
         return true;
     }
 
-    public static void eaepUploadPatternByName(PatternContainerGroup group,IPatternDetails pattern){
-        if(!ModList.get().isLoaded("extendedae_plus"))return;
+    // ======================== SERVER_BY_GROUP (本mod服务端) ========================
+
+    /**
+     * 通过本mod自己的服务端handler上传，使用 {@link PatternContainerGroup} 精确匹配。
+     * 需要服务端安装本mod。
+     */
+    public static void uploadPatternToGroup(PatternContainerGroup group, IPatternDetails pattern) {
+        var iconId = group.icon() != null ? group.icon().getId() : null;
+        PacketDistributor.sendToServer(new UploadPatternByGroupPacket(iconId, group.name()));
+        CacheProvider.unmarkPattern(pattern);
+        CacheProvider.markPatternAlready(pattern);
+        CacheProvider.incMark(group);
+    }
+
+    // ======================== EAEP_BY_NAME (兼容EAEP服务端) ========================
+
+    /**
+     * 通过EAEP的服务端handler上传，使用名称匹配。
+     * 兼容只安装了EAEP的服务器。
+     */
+    public static void eaepUploadPatternByName(PatternContainerGroup group, IPatternDetails pattern) {
+        if (!ModList.get().isLoaded("extendedae_plus")) return;
         eaepUploadPatternByNameSafe(group);
-        HelperPatternMoving.pattern =pattern;
+        eaepPendingPattern = pattern;
     }
 
-    private static void eaepUploadPatternByNameSafe(PatternContainerGroup group){
+    private static void eaepUploadPatternByNameSafe(PatternContainerGroup group) {
         PacketDistributor.sendToServer(RequestProvidersListC2SPacket.INSTANCE);
-        uploadedGroup=group;
+        eaepPendingGroup = group;
     }
 
-    public static void eaepPacketHandler(ProvidersListS2CPacket tmp){
-        HelperProvidersListS2CPacket packet=(HelperProvidersListS2CPacket) tmp;
-        if (uploadedGroup == null || pattern == null) return;
+    public static void eaepPacketHandler(ProvidersListS2CPacket tmp) {
+        HelperProvidersListS2CPacket packet = (HelperProvidersListS2CPacket) tmp;
+        if (eaepPendingGroup == null || eaepPendingPattern == null) return;
 
-        final String localName = ComponentLocaleConverter.normalizeForCompare(uploadedGroup.name().getString());
-        // 服务端回退模式大概率用 en_us 语言表生成 displayName（你贴的代码就是 getProviderDisplayName(c) -> String）
+        final String localName = ComponentLocaleConverter.normalizeForCompare(eaepPendingGroup.name().getString());
         final String enUsName = ComponentLocaleConverter.normalizeForCompare(
-                ComponentLocaleConverter.toLocaleString(uploadedGroup.name(), "en_us")
+                ComponentLocaleConverter.toLocaleString(eaepPendingGroup.name(), "en_us")
         );
 
-        for(var i=0;i<packet.getIds().size();++i){
-            String serverName = ComponentLocaleConverter.normalizeForCompare(packet.getNames().get(i));
-            if((!enUsName.isEmpty() && serverName.equals(enUsName))
-                    || (!localName.isEmpty() && serverName.equals(localName))){
-                // 关键：直接回传服务端给的 id。回退模式下该 id 已经是 encodedId = -1 - index（且 index 基于原始列表）
+        for (var i = 0; i < packet.getIds().size(); ++i) {
+            var serverNameComp = packet.getNames().get(i);
+            String serverName = ComponentLocaleConverter.normalizeForCompare(serverNameComp.getString());
+            String serverNameEnUs = ComponentLocaleConverter.normalizeForCompare(
+                    ComponentLocaleConverter.toLocaleString(serverNameComp, "en_us")
+            );
+            if ((!enUsName.isEmpty() && (serverNameEnUs.equals(enUsName) || serverName.equals(enUsName)))
+                    || (!localName.isEmpty() && (serverName.equals(localName) || serverNameEnUs.equals(localName)))) {
                 PacketDistributor.sendToServer(new UploadEncodedPatternToProviderC2SPacket(packet.getIds().get(i)));
-                CacheProvider.unmarkPattern(pattern);
-                CacheProvider.markPatternAlready(pattern);
-                CacheProvider.incMark(uploadedGroup);
+                CacheProvider.unmarkPattern(eaepPendingPattern);
+                CacheProvider.markPatternAlready(eaepPendingPattern);
+                CacheProvider.incMark(eaepPendingGroup);
 
-                // 完成后清理标记，避免持续拦截 ProvidersListS2CPacket
-                pattern = null;
-                uploadedGroup = null;
+                eaepPendingPattern = null;
+                eaepPendingGroup = null;
                 break;
             }
         }
