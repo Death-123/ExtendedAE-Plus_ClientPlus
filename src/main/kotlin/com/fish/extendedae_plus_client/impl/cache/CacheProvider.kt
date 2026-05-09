@@ -2,6 +2,7 @@ package com.fish.extendedae_plus_client.impl.cache
 
 import appeng.api.crafting.IPatternDetails
 import appeng.api.implementations.blockentities.PatternContainerGroup
+import appeng.api.stacks.AEKey
 import appeng.client.gui.me.patternaccess.PatternContainerRecord
 import net.minecraft.world.item.ItemStack
 import java.util.*
@@ -24,6 +25,26 @@ object CacheProvider {
 
     @JvmStatic
     private val networkSlots: MutableMap<PatternContainerGroup, Int> = LinkedHashMap()
+
+    @JvmStatic
+    private val primaryOutputOfProvider: MutableMap<AEKey, Int> = HashMap()
+    @JvmStatic
+    private val primaryOutputOfPattern: MutableMap<AEKey, Int> = HashMap()
+
+    private fun primaryOutputOf(pattern: IPatternDetails): AEKey? {
+        val outputs = pattern.outputs
+        return if (outputs.isNotEmpty()) outputs[0].what else null
+    }
+
+    private fun incPrimaryOutput(map: MutableMap<AEKey, Int>, key: AEKey?) {
+        if (key != null) map[key] = (map[key] ?: 0) + 1
+    }
+
+    private fun decPrimaryOutput(map: MutableMap<AEKey, Int>, key: AEKey?) {
+        if (key == null) return
+        val v = (map[key] ?: 0) - 1
+        if (v <= 0) map.remove(key) else map[key] = v
+    }
 
     @JvmStatic
     fun beginSync() {
@@ -55,6 +76,7 @@ object CacheProvider {
         val old = selectedProvider.put(pattern, container)
         if (old == null) {
             incMark(container)
+            incPrimaryOutput(primaryOutputOfProvider, primaryOutputOf(pattern))
         } else if (old != container) {
             decMark(old)
             incMark(container)
@@ -64,29 +86,38 @@ object CacheProvider {
     @JvmStatic
     fun unmarkPattern(pattern: IPatternDetails) {
         val old = selectedProvider.remove(pattern)
-        if (old != null) decMark(old)
+        if (old != null) {
+            decMark(old)
+            decPrimaryOutput(primaryOutputOfProvider, primaryOutputOf(pattern))
+        }
     }
 
     @JvmStatic
     fun markPatternAlready(pattern: IPatternDetails) {
-        selectedPattern.add(pattern)
+        if (selectedPattern.add(pattern)) {
+            incPrimaryOutput(primaryOutputOfPattern, primaryOutputOf(pattern))
+        }
     }
 
     @JvmStatic
     fun unmarkPatternAlready(pattern: IPatternDetails) {
-        selectedPattern.remove(pattern)
+        if (selectedPattern.remove(pattern)) {
+            decPrimaryOutput(primaryOutputOfPattern, primaryOutputOf(pattern))
+        }
     }
 
     @JvmStatic
     fun clearPattern() {
         selectedProvider.clear()
         markedCount.clear()
+        primaryOutputOfProvider.clear()
     }
 
     @JvmStatic
     fun clearPatternAlready() {
         selectedPattern.clear()
         providerSlots.clear()
+        primaryOutputOfPattern.clear()
     }
 
     @JvmStatic
@@ -102,6 +133,12 @@ object CacheProvider {
     @JvmStatic
     fun hasPattern(pattern: IPatternDetails): Boolean {
         return selectedPattern.contains(pattern) || selectedProvider.containsKey(pattern)
+    }
+
+    @JvmStatic
+    fun hasPrimaryOutput(pattern: IPatternDetails): Boolean {
+        val key = primaryOutputOf(pattern) ?: return false
+        return primaryOutputOfProvider.containsKey(key) || primaryOutputOfPattern.containsKey(key)
     }
 
     @JvmStatic

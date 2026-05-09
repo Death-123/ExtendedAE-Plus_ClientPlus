@@ -15,6 +15,11 @@ public class MixinButton implements HelperButtonOnPressModifier {
     protected Button.OnPress onPress;
 
     @Override
+    public Button.OnPress eaep$getOnPress() {
+        return this.onPress;
+    }
+
+    @Override
     public void eaep$setOnPress(Button.OnPress onPress) {
         this.onPress = onPress;
     }

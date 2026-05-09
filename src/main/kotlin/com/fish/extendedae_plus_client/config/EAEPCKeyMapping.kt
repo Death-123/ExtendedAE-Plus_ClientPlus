@@ -4,6 +4,7 @@ import com.fish.extendedae_plus_client.ExtendedAEPlusClient
 import com.fish.extendedae_plus_client.util.UtilKeyBuilder
 import com.mojang.blaze3d.platform.InputConstants
 import net.minecraft.client.KeyMapping
+import net.neoforged.api.distmarker.Dist
 import net.neoforged.bus.api.SubscribeEvent
 import net.neoforged.fml.common.EventBusSubscriber
 import net.neoforged.jarjar.nio.util.Lazy
@@ -12,7 +13,7 @@ import net.neoforged.neoforge.client.settings.IKeyConflictContext
 import net.neoforged.neoforge.client.settings.KeyConflictContext
 import org.lwjgl.glfw.GLFW
 
-@EventBusSubscriber(modid = ExtendedAEPlusClient.MODID)
+@EventBusSubscriber(modid = ExtendedAEPlusClient.MODID, value = [Dist.CLIENT])
 object EAEPCKeyMapping {
     private val mappings: MutableSet<Lazy<KeyMapping>> = HashSet<Lazy<KeyMapping>>()
 

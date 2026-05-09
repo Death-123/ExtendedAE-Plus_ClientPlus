@@ -8,12 +8,13 @@ import com.fish.extendedae_plus_client.ExtendedAEPlusClient
 import com.fish.extendedae_plus_client.impl.cache.CacheCrafting
 import com.fish.extendedae_plus_client.impl.cache.CacheCuttingKnife
 import net.minecraft.client.Minecraft
+import net.neoforged.api.distmarker.Dist
 import net.neoforged.bus.api.SubscribeEvent
 import net.neoforged.fml.common.EventBusSubscriber
 import net.neoforged.neoforge.client.event.ScreenEvent
 import net.neoforged.neoforge.network.PacketDistributor
 
-@EventBusSubscriber(modid = ExtendedAEPlusClient.MODID)
+@EventBusSubscriber(modid = ExtendedAEPlusClient.MODID, value = [Dist.CLIENT])
 object EventScreenSwitching {
     @SubscribeEvent
     private fun onGuiOpening(event: ScreenEvent.Opening) {

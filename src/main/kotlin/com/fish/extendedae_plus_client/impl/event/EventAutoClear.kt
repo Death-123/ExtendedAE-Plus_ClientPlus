@@ -4,11 +4,12 @@ import com.fish.extendedae_plus_client.impl.EAEEncodingHelper
 import com.fish.extendedae_plus_client.impl.cache.CacheCrafting
 import com.fish.extendedae_plus_client.impl.cache.CacheCuttingKnife
 import com.fish.extendedae_plus_client.impl.cache.CacheProvider
+import net.neoforged.api.distmarker.Dist
 import net.neoforged.bus.api.SubscribeEvent
 import net.neoforged.fml.common.EventBusSubscriber
 import net.neoforged.neoforge.event.GameShuttingDownEvent
 
-@EventBusSubscriber
+@EventBusSubscriber(value = [Dist.CLIENT])
 object EventAutoClear {
     @Suppress("unused")
     @SubscribeEvent

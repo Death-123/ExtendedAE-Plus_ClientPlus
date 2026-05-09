@@ -15,6 +15,7 @@ import appeng.menu.slot.RestrictedInputSlot;
 import appeng.parts.encoding.EncodingMode;
 import com.fish.extendedae_plus_client.config.EAEPCConfig;
 import com.fish.extendedae_plus_client.config.enums.AutoUploadMode;
+import com.fish.extendedae_plus_client.config.enums.EncodingInterceptMode;
 import com.fish.extendedae_plus_client.impl.cache.CacheProvider;
 import com.fish.extendedae_plus_client.mixin.impl.bridge.BridgePlanToEncode;
 import com.fish.extendedae_plus_client.mixin.impl.helper.AutoEncodingStage;
@@ -102,7 +103,18 @@ public abstract class MixinEncodingTerminal extends MEStorageMenu implements Bri
         }
 
         var patternDetails = PatternDetailsHelper.decodePattern(pattern, this.getPlayer().level());
-        if (patternDetails == null || CacheProvider.hasPattern(patternDetails)) {
+        if (patternDetails == null) {
+            ci.cancel();
+            return;
+        }
+
+        var interceptMode = EAEPCConfig.encodingInterceptMode.get();
+        boolean shouldIntercept = switch (interceptMode) {
+            case SAME_PATTERN -> CacheProvider.hasPattern(patternDetails);
+            case SAME_PRIMARY_OUTPUT -> CacheProvider.hasPrimaryOutput(patternDetails);
+            default -> false;
+        };
+        if (shouldIntercept) {
             this.getPlayer().displayClientMessage(
                     UtilKeyBuilder.of(UtilKeyBuilder.message)
                             .addStr("pattern")

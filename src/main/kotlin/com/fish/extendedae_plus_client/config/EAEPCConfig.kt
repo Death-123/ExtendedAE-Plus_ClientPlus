@@ -1,6 +1,7 @@
 package com.fish.extendedae_plus_client.config
 
 import com.fish.extendedae_plus_client.config.enums.AutoUploadMode
+import com.fish.extendedae_plus_client.config.enums.EncodingInterceptMode
 import com.fish.extendedae_plus_client.config.enums.ModeEncodingTransfer
 import com.fish.extendedae_plus_client.config.enums.TiggerMode
 import net.neoforged.fml.ModContainer
@@ -28,6 +29,8 @@ object EAEPCConfig {
     val itemEditingTiggerMode: ModConfigSpec.EnumValue<TiggerMode>
     @JvmField
     val autoEncodingTiggerMode: ModConfigSpec.EnumValue<TiggerMode>
+    @JvmField
+    val encodingInterceptMode: ModConfigSpec.EnumValue<EncodingInterceptMode>
 
     init {
         val builder = ModConfigSpec.Builder()
@@ -39,6 +42,7 @@ object EAEPCConfig {
         encodingTiggerMode = builder.defineEnum("encodingTiggerMode", TiggerMode.ON_NOT_SHIFT)
         itemEditingTiggerMode = builder.defineEnum("itemEditingTiggerMode", TiggerMode.ON_CTRL)
         autoEncodingTiggerMode = builder.defineEnum("autoEncodingTiggerMode", TiggerMode.ON_CTRL)
+        encodingInterceptMode = builder.defineEnum("encodingInterceptMode", EncodingInterceptMode.SAME_PATTERN)
         SPEC = builder.build()
     }
 
