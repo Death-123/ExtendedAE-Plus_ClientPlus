@@ -9,6 +9,7 @@ import appeng.helpers.InventoryAction
 import appeng.menu.me.common.MEStorageMenu
 import com.fish.extendedae_plus_client.ExtendedAEPlusClient
 import com.fish.extendedae_plus_client.config.EAEPCKeyMapping
+import com.fish.extendedae_plus_client.integration.ContextModLoaded
 import com.fish.extendedae_plus_client.integration.recipeViewer.HelperRecipeViewer.hoveredStacks
 import com.fish.extendedae_plus_client.integration.recipeViewer.HelperRecipeViewer.isCheatMode
 import com.fish.extendedae_plus_client.integration.recipeViewer.HelperRecipeViewer.matchesKey
@@ -59,10 +60,10 @@ object EventScreenActions {
                 menu.handleInteraction(infoStack.getSecond(), InventoryAction.AUTO_CRAFT)
                 event.setCanceled(true)
             }
-        } else {
-            hoveredStacks[0]?.let {
-                PacketDistributor.sendToServer(PickBlockPacket((it.what as AEItemKey).toStack()))
-            }
+        } else if (ContextModLoaded.ae2wtlib.isLoaded){
+            val item = hoveredStacks.firstOrNull()?.what
+            if (item !is AEItemKey) return
+            PacketDistributor.sendToServer(PickBlockPacket(item.toStack()))
             isPulled = true
         }
     }
@@ -118,8 +119,7 @@ object EventScreenActions {
     }
 
     private fun getAction(
-        infoStack: Pair<AEKey, Long>,
-        pulled: Pair<Boolean, Boolean>
+        infoStack: Pair<AEKey, Long>, pulled: Pair<Boolean, Boolean>
     ): InventoryAction {
         return if (infoStack.getFirst() is AEItemKey) {
             if (pulled.getFirst() && pulled.getSecond()) InventoryAction.SHIFT_CLICK
@@ -130,8 +130,7 @@ object EventScreenActions {
         } else {
             if (pulled.getFirst() && pulled.getSecond()) InventoryAction.FILL_ENTIRE_ITEM_MOVE_TO_PLAYER
             else if (pulled.getFirst()) InventoryAction.FILL_ENTIRE_ITEM
-            else if (pulled.getSecond())
-                InventoryAction.FILL_ITEM_MOVE_TO_PLAYER
+            else if (pulled.getSecond()) InventoryAction.FILL_ITEM_MOVE_TO_PLAYER
             else InventoryAction.FILL_ITEM
         }
     }

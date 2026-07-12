@@ -31,6 +31,8 @@ object EAEPCConfig {
     val autoEncodingTiggerMode: ModConfigSpec.EnumValue<TiggerMode>
     @JvmField
     val encodingInterceptMode: ModConfigSpec.EnumValue<EncodingInterceptMode>
+    @JvmField
+    val autoCraftingFill: ModConfigSpec.BooleanValue
 
     init {
         val builder = ModConfigSpec.Builder()
@@ -43,6 +45,7 @@ object EAEPCConfig {
         itemEditingTiggerMode = builder.defineEnum("itemEditingTiggerMode", TiggerMode.ON_CTRL)
         autoEncodingTiggerMode = builder.defineEnum("autoEncodingTiggerMode", TiggerMode.ON_CTRL)
         encodingInterceptMode = builder.defineEnum("encodingInterceptMode", EncodingInterceptMode.SAME_PATTERN)
+        autoCraftingFill = builder.define("autoCraftingFill", true)
         SPEC = builder.build()
     }
 
