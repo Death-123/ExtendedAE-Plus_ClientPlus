@@ -15,6 +15,7 @@ import com.fish.extendedae_plus_client.integration.recipeViewer.HelperRecipeView
 import com.fish.extendedae_plus_client.integration.recipeViewer.HelperRecipeViewer.setSearchText
 import com.fish.extendedae_plus_client.mixin.impl.helper.HelperSearchField
 import com.mojang.datafixers.util.Pair
+import de.mari_023.ae2wtlib.networking.PickBlockPacket
 import net.minecraft.client.Minecraft
 import net.minecraft.world.inventory.Slot
 import net.neoforged.api.distmarker.Dist
@@ -22,6 +23,7 @@ import net.neoforged.bus.api.SubscribeEvent
 import net.neoforged.fml.common.EventBusSubscriber
 import net.neoforged.neoforge.client.event.InputEvent
 import net.neoforged.neoforge.client.event.ScreenEvent
+import net.neoforged.neoforge.network.PacketDistributor
 import org.lwjgl.glfw.GLFW
 
 @EventBusSubscriber(modid = ExtendedAEPlusClient.MODID, value = [Dist.CLIENT])
@@ -33,31 +35,35 @@ object EventScreenActions {
         if (Minecraft.getInstance().player == null) return
         if (Minecraft.getInstance().screen == null) return
 
-        val menu = Minecraft.getInstance().player!!.containerMenu
-        if (menu !is MEStorageMenu) return
-
         if (isCheatMode) return
-
         if (event.action != GLFW.GLFW_PRESS) {
             if (isPulled) event.setCanceled(true)
             isPulled = false
             return
         }
-
-        val infoStack = findHoveredStack(menu) ?: return
-
         val pulled: Pair<Boolean, Boolean>? = matchesKey(event.button)
-        if (pulled != null) {
-            menu.handleInteraction(
-                infoStack.getSecond(), getAction(infoStack, pulled)
-            )
-            isPulled = true
-            return
-        }
+        if (event.button != GLFW.GLFW_MOUSE_BUTTON_MIDDLE && pulled == null) return
+        val menu = Minecraft.getInstance().player!!.containerMenu
+        if (menu is MEStorageMenu) {
+            val infoStack = findHoveredStack(menu) ?: return
 
-        if (event.button == GLFW.GLFW_MOUSE_BUTTON_MIDDLE) {
-            menu.handleInteraction(infoStack.getSecond(), InventoryAction.AUTO_CRAFT)
-            event.setCanceled(true)
+            if (pulled != null) {
+                menu.handleInteraction(
+                    infoStack.getSecond(), getAction(infoStack, pulled)
+                )
+                isPulled = true
+                return
+            }
+
+            if (event.button == GLFW.GLFW_MOUSE_BUTTON_MIDDLE) {
+                menu.handleInteraction(infoStack.getSecond(), InventoryAction.AUTO_CRAFT)
+                event.setCanceled(true)
+            }
+        } else {
+            hoveredStacks[0]?.let {
+                PacketDistributor.sendToServer(PickBlockPacket((it.what as AEItemKey).toStack()))
+            }
+            isPulled = true
         }
     }
 
