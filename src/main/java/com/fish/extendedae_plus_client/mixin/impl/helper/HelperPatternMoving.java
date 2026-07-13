@@ -6,21 +6,15 @@ import appeng.api.implementations.blockentities.PatternContainerGroup;
 import appeng.client.gui.AEBaseScreen;
 import appeng.core.network.serverbound.InventoryActionPacket;
 import appeng.helpers.InventoryAction;
-import com.extendedae_plus.network.ProvidersListS2CPacket;
-import com.extendedae_plus.network.RequestProvidersListC2SPacket;
-import com.extendedae_plus.network.UploadEncodedPatternToProviderC2SPacket;
 import com.fish.extendedae_plus_client.config.EAEPCConfig;
 import com.fish.extendedae_plus_client.config.enums.AutoUploadMode;
 import com.fish.extendedae_plus_client.impl.cache.CacheProvider;
-import com.fish.extendedae_plus_client.network.UploadPatternByGroupPacket;
-import com.fish.extendedae_plus_client.util.ComponentLocaleConverter;
 import com.mojang.datafixers.util.Pair;
 import it.unimi.dsi.fastutil.ints.Int2ObjectOpenHashMap;
 import net.minecraft.client.Minecraft;
 import net.minecraft.network.protocol.game.ServerboundContainerClickPacket;
 import net.minecraft.world.inventory.ClickType;
 import net.minecraft.world.item.ItemStack;
-import net.neoforged.fml.ModList;
 import net.neoforged.neoforge.network.PacketDistributor;
 
 import java.util.*;
@@ -34,10 +28,6 @@ public final class HelperPatternMoving {
     private final Map<IPatternDetails, PatternContainerGroup> perSuccess = new HashMap<>();
     private int delay = EAEPCConfig.autoTransferDelay.getAsInt();
     private boolean perCompleted = false;
-
-    // EAEP_BY_NAME flow state
-    public static IPatternDetails eaepPendingPattern = null;
-    public static PatternContainerGroup eaepPendingGroup = null;
 
     public static HelperPatternMoving INSTANCE = null;
 
@@ -161,63 +151,16 @@ public final class HelperPatternMoving {
         return true;
     }
 
-    // ======================== SERVER_BY_GROUP (本mod服务端) ========================
+    // ======================== SERVER_BY_GROUP (commit 3) ========================
+    //
+    // The historic `uploadPatternToGroup(group, pattern)` static method has moved into
+    // `com.fish.extendedae_plus_client.upload.flow.ServerByGroupEncodeFlow.performUpload`
+    // as part of the two-phase RPC implementation. The `UploadPatternByGroupPacket` itself
+    // is still used (it is RPC #2 in the new flow).
 
-    /**
-     * 通过本mod自己的服务端handler上传，使用 {@link PatternContainerGroup} 精确匹配。
-     * 需要服务端安装本mod。
-     */
-    public static void uploadPatternToGroup(PatternContainerGroup group, IPatternDetails pattern) {
-        var iconId = group.icon() != null ? group.icon().getId() : null;
-        PacketDistributor.sendToServer(new UploadPatternByGroupPacket(iconId, group.name()));
-        CacheProvider.unmarkPattern(pattern);
-        CacheProvider.markPatternAlready(pattern);
-        CacheProvider.incMark(group);
-    }
-
-    // ======================== EAEP_BY_NAME (兼容EAEP服务端) ========================
-
-    /**
-     * 通过EAEP的服务端handler上传，使用名称匹配。
-     * 兼容只安装了EAEP的服务器。
-     */
-    public static void eaepUploadPatternByName(PatternContainerGroup group, IPatternDetails pattern) {
-        if (!ModList.get().isLoaded("extendedae_plus")) return;
-        eaepUploadPatternByNameSafe(group);
-        eaepPendingPattern = pattern;
-    }
-
-    private static void eaepUploadPatternByNameSafe(PatternContainerGroup group) {
-        PacketDistributor.sendToServer(RequestProvidersListC2SPacket.INSTANCE);
-        eaepPendingGroup = group;
-    }
-
-    public static void eaepPacketHandler(ProvidersListS2CPacket tmp) {
-        HelperProvidersListS2CPacket packet = (HelperProvidersListS2CPacket) tmp;
-        if (eaepPendingGroup == null || eaepPendingPattern == null) return;
-
-        final String localName = ComponentLocaleConverter.normalizeForCompare(eaepPendingGroup.name().getString());
-        final String enUsName = ComponentLocaleConverter.normalizeForCompare(
-                ComponentLocaleConverter.toLocaleString(eaepPendingGroup.name(), "en_us")
-        );
-
-        for (var i = 0; i < packet.getIds().size(); ++i) {
-            var serverNameComp = packet.getNames().get(i);
-            String serverName = ComponentLocaleConverter.normalizeForCompare(serverNameComp.getString());
-            String serverNameEnUs = ComponentLocaleConverter.normalizeForCompare(
-                    ComponentLocaleConverter.toLocaleString(serverNameComp, "en_us")
-            );
-            if ((!enUsName.isEmpty() && (serverNameEnUs.equals(enUsName) || serverName.equals(enUsName)))
-                    || (!localName.isEmpty() && (serverName.equals(localName) || serverNameEnUs.equals(localName)))) {
-                PacketDistributor.sendToServer(new UploadEncodedPatternToProviderC2SPacket(packet.getIds().get(i)));
-                CacheProvider.unmarkPattern(eaepPendingPattern);
-                CacheProvider.markPatternAlready(eaepPendingPattern);
-                CacheProvider.incMark(eaepPendingGroup);
-
-                eaepPendingPattern = null;
-                eaepPendingGroup = null;
-                break;
-            }
-        }
-    }
+    // ======================== EAEP_BY_NAME state (commit 2) ========================
+    //
+    // Static `eaepPendingPattern`/`eaepPendingGroup` and the `eaepUploadPatternByName` /
+    // `eaepPacketHandler` methods that used to live here have moved to
+    // `com.fish.extendedae_plus_client.upload.routing.EaepResponseRouter`.
 }

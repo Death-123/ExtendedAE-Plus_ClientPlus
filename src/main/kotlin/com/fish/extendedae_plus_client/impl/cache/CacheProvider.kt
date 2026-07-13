@@ -141,6 +141,16 @@ object CacheProvider {
         return primaryOutputOfProvider.containsKey(key) || primaryOutputOfPattern.containsKey(key)
     }
 
+    /**
+     * Read-only overload accepting an [AEKey] directly, added for the new
+     * `LocalPushPatternRegistry.canCraft(AEKey)` API. Pure facade over the existing
+     * `primaryOutputOfProvider`/`primaryOutputOfPattern` maps — no behaviour change.
+     */
+    @JvmStatic
+    fun hasPrimaryOutputKey(key: AEKey): Boolean {
+        return primaryOutputOfProvider.containsKey(key) || primaryOutputOfPattern.containsKey(key)
+    }
+
     @JvmStatic
     fun putProvider(container: PatternContainerRecord, mabeHasSlot: Boolean) {
         if (mabeHasSlot) {
