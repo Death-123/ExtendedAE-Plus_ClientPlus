@@ -15,6 +15,7 @@ enum class ContextModLoaded(private val modID: String) {
     appliedMekanistics("appmek"),
     gtceuModern("gtceu"),
     ftbLibrary("ftblibrary"),
+    ae2helpers("ae2helpers"),
     ;
 
     var isLoaded: Boolean

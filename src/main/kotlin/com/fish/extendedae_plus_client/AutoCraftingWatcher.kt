@@ -37,6 +37,7 @@ class AutoCraftingWatcher {
     }
 
     fun onOpen(menu: CraftingTermMenu) {
+        if (!isAutoInsertEnabled) return
         this.craftingSlotsOffset = menu.getSlots(SlotSemantics.CRAFTING_GRID).first().index
         shouldTick = getHost(menu) == host
     }
@@ -72,7 +73,7 @@ class AutoCraftingWatcher {
     }
 
     fun onTick(screen: MEStorageScreen<*>) {
-        if (!active || pendingSlots.isEmpty()) return
+        if (!isAutoInsertEnabled || !active || pendingSlots.isEmpty()) return
         if (startDelay > 0) {
             startDelay--
             return

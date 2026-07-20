@@ -4,6 +4,7 @@ import com.fish.extendedae_plus_client.config.enums.AutoUploadMode
 import com.fish.extendedae_plus_client.config.enums.EncodingInterceptMode
 import com.fish.extendedae_plus_client.config.enums.ModeEncodingTransfer
 import com.fish.extendedae_plus_client.config.enums.TiggerMode
+import com.fish.extendedae_plus_client.integration.ContextModLoaded
 import net.neoforged.fml.ModContainer
 import net.neoforged.fml.config.ModConfig
 import net.neoforged.neoforge.client.gui.ConfigurationScreen
@@ -45,7 +46,7 @@ object EAEPCConfig {
         itemEditingTiggerMode = builder.defineEnum("itemEditingTiggerMode", TiggerMode.ON_CTRL)
         autoEncodingTiggerMode = builder.defineEnum("autoEncodingTiggerMode", TiggerMode.ON_CTRL)
         encodingInterceptMode = builder.defineEnum("encodingInterceptMode", EncodingInterceptMode.SAME_PATTERN)
-        autoCraftingFill = builder.define("autoCraftingFill", true)
+        autoCraftingFill = builder.define("autoCraftingFill", !ContextModLoaded.ae2helpers.isLoaded)
         SPEC = builder.build()
     }
 
