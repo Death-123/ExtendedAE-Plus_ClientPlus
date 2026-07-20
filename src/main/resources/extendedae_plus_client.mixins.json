@@ -10,6 +10,7 @@
     "ae.accessor.AccessorMEStorageScreen",
     "ae.accessor.AccessorPAMenu",
     "ae.accessor.AccessorProvidersListS2CPacket",
+    "eaep.ProvidersListS2CPacketMixin",
     "ae.menu.MixinCraftingConfirm",
     "ae.menu.MixinCraftIngTermMenu",
     "ae.menu.MixinEncodingTerminal",
