@@ -16,7 +16,13 @@ enum class EAEPActionItems(
 
     ALIAS_ADD(EAEPIcon.SAVE_UP, "recipe_alias", "add"),
     ALIAS_REMOVE(EAEPIcon.SAVE_DOWN, "recipe_alias", "remove"),
-    CHECK_DUPLICATES(EAEPIcon.SAVE_CENTER, "check_duplicates", "description");
+    CHECK_DUPLICATES(EAEPIcon.SAVE_CENTER, "check_duplicates", "description"),
+
+    CHANGE_UPLOAD_MODE_NONE(fromAEIcon(Icon.INVALID), "change_upload_mode", "none"),
+    CHANGE_UPLOAD_MODE_WHEN_OPEN(fromAEIcon(Icon.INVALID), "change_upload_mode", "when_open"),
+    CHANGE_UPLOAD_MODE_AUTO_OPEN(fromAEIcon(Icon.INVALID), "change_upload_mode", "auto_open"),
+    CHANGE_UPLOAD_MODE_SERVER_BY_GROUP(fromAEIcon(Icon.INVALID), "change_upload_mode", "server_by_group"),
+    CHANGE_UPLOAD_MODE_EAEP_BY_NAME(fromAEIcon(Icon.INVALID), "change_upload_mode", "eaep_by_name");
 
     constructor(icon: IButtonIcon, actionGroup: String) :
             this(icon, Component.empty(), Component.empty(), actionGroup)

@@ -4,7 +4,6 @@ import appeng.api.parts.IPartHost;
 import appeng.api.parts.SelectedPart;
 import appeng.core.definitions.AEItems;
 import appeng.items.tools.quartz.QuartzCuttingKnifeItem;
-import com.fish.extendedae_plus_client.config.EAEPCConfig;
 import com.fish.extendedae_plus_client.impl.cache.CacheCuttingKnife;
 import com.fish.extendedae_plus_client.integration.ContextModLoaded;
 import com.fish.extendedae_plus_client.util.UtilKeyBuilder;
@@ -72,7 +71,7 @@ public abstract class QuartzCuttingKnifeItemMixin {
                                                     CallbackInfoReturnable<InteractionResult> cir) {
         Level level = context.getLevel();
         Player player = context.getPlayer();
-        if (!level.isClientSide() || player == null || !EAEPCConfig.encodingTiggerMode.get().shouldTigger()) {
+        if (!level.isClientSide() || player == null) {
             return;
         }
 

@@ -13,13 +13,17 @@ open class EAEPCycleButton(
     protected val iteratorState: IteratorState
 ) : EAEPButton({ button ->
     val screen = Minecraft.getInstance().screen
-    if (button is EAEPCycleButton && screen is AEBaseScreen<*>)
+    if (button is EAEPCycleButton && screen is AEBaseScreen<*> && button.states.isNotEmpty())
         statedTask.accept(button.iterateState(screen.isHandlingRightClick), button.action)
 }) {
     protected var stateIndex: Int = 0
 
+    init {
+        this.updateTooltip()
+    }
+
     override val action: EAEPActionItems
-        get() = this.states[this.stateIndex]
+        get() = if (this.states != null) this.states[this.stateIndex] else EAEPActionItems.BACKING_OUT
 
     fun setStateIndex(stateIndex: Int, triggerEvent: Boolean) {
         this.stateIndex = stateIndex

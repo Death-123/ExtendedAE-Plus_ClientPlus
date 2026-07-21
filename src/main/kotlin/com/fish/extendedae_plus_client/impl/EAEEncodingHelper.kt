@@ -17,7 +17,6 @@ import dev.emi.emi.api.stack.EmiStack
 import dev.emi.emi.jemi.JemiRecipe
 import it.unimi.dsi.fastutil.ints.Int2ObjectRBTreeMap
 import it.unimi.dsi.fastutil.ints.Int2ObjectSortedMap
-import mezz.jei.api.recipe.IRecipeCatalystLookup
 import mezz.jei.api.recipe.RecipeType
 import net.minecraft.client.Minecraft
 import net.minecraft.client.player.LocalPlayer
@@ -163,24 +162,51 @@ object EAEEncodingHelper {
                 workstationKeys.forEachIndexed { index, str -> collectRecipeKeyword(str, 10 + index) }
             }
         }
-        val recipeManager = HelperJeiRuntime.get()?.recipeManager
-        if (recipeManager != null) {
-            val lookup: IRecipeCatalystLookup? = when (recipeBase) {
-                is Recipe<*> -> recipeManager.createRecipeCatalystLookup(RecipeType.createFromVanilla(recipeBase.type))
-                is RecipeHolder<*> -> recipeManager.createRecipeCatalystLookup(RecipeType.createFromVanilla(recipeBase.value.type))
-                else -> null
-            }
-            if (lookup != null) {
-                val workstationKeys = ArrayList<String>()
-                lookup.itemStack.forEach { stack ->
-                    val name = stack.hoverName
-                    val key = name.string ?: return@forEach
-                    workstationKeys.add(key)
+        val helperJeiRuntime = HelperJeiRuntime.get()
+        if (!ContextModLoaded.emi.isLoaded && helperJeiRuntime != null) {
+            val recipeManager = helperJeiRuntime.recipeManager
+            try {
+                val type = when (recipeBase) {
+                    is RecipeHolder<*> -> recipeBase.value.type
+                    is Recipe<*> -> recipeBase.type
+                    else -> null
                 }
-                workstationKeys.forEachIndexed { index, str -> collectRecipeKeyword(str, 10 + index) }
+                if (type != null) {
+                    val workstationKeys = ArrayList<String>()
+                    val lookup = recipeManager.createRecipeCatalystLookup(RecipeType.createFromVanilla(type))
+                    lookup.itemStack.forEach { stack ->
+                        val name = stack.hoverName
+                        val key = name.string ?: return@forEach
+                        workstationKeys.add(key)
+                    }
+
+                    workstationKeys.forEachIndexed { index, str -> collectRecipeKeyword(str, 10 + index) }
+                }
+            } catch (e: Exception) {
+//                e.printStackTrace()
+            }
+            
+            if (recipeKeywords.isEmpty()) {
+                val clazz = when (recipeBase) {
+                    is RecipeHolder<*> -> recipeBase.value.javaClass
+                    is Recipe<*> -> recipeBase.javaClass
+                    else -> null
+                }
+                if (clazz != null) {
+                    val type = helperJeiRuntime.jeiHelpers.allRecipeTypes.filter { type -> type.recipeClass == clazz }.findFirst()
+                    val workstationKeys = ArrayList<String>()
+                    type.ifPresent { type ->
+                        val lookup = recipeManager.createRecipeCatalystLookup(type)
+                        lookup.itemStack.forEach { stack ->
+                            val name = stack.hoverName
+                            val key = name.string ?: return@forEach
+                            workstationKeys.add(key)
+                        }
+                    }
+                    workstationKeys.forEachIndexed { index, str -> collectRecipeKeyword(str, 10 + index) }
+                }
             }
         }
-
 
         if (recipeBase is RecipeHolder<*>) {
             val key = BuiltInRegistries.RECIPE_TYPE.getKey(recipeBase.value.type)

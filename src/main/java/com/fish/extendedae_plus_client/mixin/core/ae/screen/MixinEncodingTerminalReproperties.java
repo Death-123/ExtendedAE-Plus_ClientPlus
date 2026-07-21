@@ -7,14 +7,19 @@ import appeng.core.network.serverbound.InventoryActionPacket;
 import appeng.helpers.InventoryAction;
 import appeng.menu.me.items.PatternEncodingTermMenu;
 import com.fish.extendedae_plus_client.config.EAEPCConfig;
+import com.fish.extendedae_plus_client.config.enums.AutoUploadMode;
 import com.fish.extendedae_plus_client.mixin.impl.helper.HelperEncodingTerminal;
 import com.fish.extendedae_plus_client.render.screen.ScreenStacksReproperties;
+import com.fish.extendedae_plus_client.render.widgets.button.EAEPActionItems;
+import com.fish.extendedae_plus_client.render.widgets.button.EAEPCycleButton;
 import net.minecraft.network.chat.Component;
 import net.minecraft.world.entity.player.Inventory;
 import net.neoforged.neoforge.network.PacketDistributor;
 import org.spongepowered.asm.mixin.Mixin;
+import org.spongepowered.asm.mixin.Unique;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
+import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 
 @Mixin(PatternEncodingTermScreen.class)
@@ -22,6 +27,19 @@ public class MixinEncodingTerminalReproperties<TMenu extends PatternEncodingTerm
         extends MEStorageScreen<TMenu> {
     public MixinEncodingTerminalReproperties(TMenu menu, Inventory playerInventory, Component title, ScreenStyle style) {
         super(menu, playerInventory, title, style);
+    }
+
+    @Inject(method = "<init>", at = @At("TAIL"))
+    private void onInit(CallbackInfo ci) {
+        var changeUploadModeButton = new EAEPCycleButton.Builder()
+                .addPart(EAEPActionItems.CHANGE_UPLOAD_MODE_NONE, action -> eaep$changeUploadMode(0))
+                .addPart(EAEPActionItems.CHANGE_UPLOAD_MODE_WHEN_OPEN, action -> eaep$changeUploadMode(1))
+                .addPart(EAEPActionItems.CHANGE_UPLOAD_MODE_AUTO_OPEN, action -> eaep$changeUploadMode(2))
+                .addPart(EAEPActionItems.CHANGE_UPLOAD_MODE_EAEP_BY_NAME, action -> eaep$changeUploadMode(3))
+                .addPart(EAEPActionItems.CHANGE_UPLOAD_MODE_SERVER_BY_GROUP, action -> eaep$changeUploadMode(4))
+                .build();
+        changeUploadModeButton.setStateIndex(EAEPCConfig.autoUploadMode.get().ordinal(), false);
+        this.addToLeftToolbar(changeUploadModeButton);
     }
 
     @Inject(method = "mouseClicked", at = @At("HEAD"), cancellable = true)
@@ -47,9 +65,15 @@ public class MixinEncodingTerminalReproperties<TMenu extends PatternEncodingTerm
         this.switchToScreen(screen);
         cir.setReturnValue(true);
     }
+
     @Override
-    public void containerTick(){
+    public void containerTick() {
         super.containerTick();
-        ((HelperEncodingTerminal)this.menu).eaep$tick();
+        ((HelperEncodingTerminal) this.menu).eaep$tick();
+    }
+
+    @Unique
+    private void eaep$changeUploadMode(int i) {
+        EAEPCConfig.autoUploadMode.set(AutoUploadMode.getEntries().get(i));
     }
 }
