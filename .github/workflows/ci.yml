@@ -3,6 +3,7 @@ name: Build CI
 on:
   push:
     branches: [ "1.21.1kotlin" ]
+    tags: [ "v*" ]
   pull_request:
     branches: [ "1.21.1kotlin" ]
 
